@@ -972,14 +972,19 @@ class InstagramAPI:
         try:
             self.LastResponse = response
             self.LastJson = json.loads(response.text)
-        except Exception as e:
-            print("Warning: Exception on SendRequest: %s\nIgnoring..." % str(e))
+        except:
+            pass
 
         if response.status_code == 200:
             return True
-        elif response.status_code == 400 and self.LastJson["two_factor_required"] == True:
+        elif (response.status_code == 500):
+            response.raise_for_status()
+            return False
+        elif (response.status_code == 400) and ("two_factor_required" in self.LastJson) and (self.LastJson["two_factor_required"] == True):
             print("Warning: Two Factor in enabled. Sms code needed")
             self.two_factor = True
+            return False
+        elif (response.status_code == 400) and ('error_type' == 'sms_code_validation_code_invalid'):
             return False
         else:
             print("Request return " + str(response.status_code) + " error!")
