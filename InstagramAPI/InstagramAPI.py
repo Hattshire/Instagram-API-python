@@ -67,6 +67,7 @@ class InstagramAPI:
         self.device_id = self.generateDeviceId(m.hexdigest())
         self.setUser(username, password)
         self.isLoggedIn = False
+        self.two_factor = False
         self.LastResponse = None
         self.s = requests.Session()
 
@@ -89,7 +90,7 @@ class InstagramAPI:
 
     def login(self, force=False):
         if (not self.isLoggedIn or force):
-            if (self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.generateUUID(False), None, True)):
+            if (self.two_factor or self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.generateUUID(False), None, True)):
 
                 data = {'phone_id': self.generateUUID(True),
                         '_csrftoken': self.LastResponse.cookies['csrftoken'],
@@ -99,7 +100,7 @@ class InstagramAPI:
                         'password': self.password,
                         'login_attempt_count': '0'}
 
-                if (self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
+                if (self.two_factor or self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
                     self.isLoggedIn = True
                     self.username_id = self.LastJson["logged_in_user"]["pk"]
                     self.rank_token = "%s_%s" % (self.username_id, self.uuid)
@@ -968,17 +969,22 @@ class InstagramAPI:
             except Exception as e:
                 print('Except on SendRequest (wait 60 sec and resend): ' + str(e))
                 time.sleep(60)
-
-        if response.status_code == 200:
+        try:
             self.LastResponse = response
             self.LastJson = json.loads(response.text)
+        except Exception as e:
+            print("Warning: Exception on SendRequest: %s\nIgnoring..." % str(e))
+
+        if response.status_code == 200:
             return True
+        elif response.status_code == 400 and self.LastJson["two_factor_required"] == True:
+            print("Warning: Two Factor in enabled. Sms code needed")
+            self.two_factor = True
+            return False
         else:
             print("Request return " + str(response.status_code) + " error!")
             # for debugging
             try:
-                self.LastResponse = response
-                self.LastJson = json.loads(response.text)
                 print(self.LastJson)
                 if 'error_type' in self.LastJson and self.LastJson['error_type'] == 'sentry_block':
                     raise SentryBlockException(self.LastJson['message'])
@@ -987,6 +993,19 @@ class InstagramAPI:
             except:
                 pass
             return False
+
+    def sendTwoFactorCode(self, code):
+        data = {
+            "verification_code": code,
+            "_csrftoken": self.LastResponse.cookies['csrftoken'],
+            "two_factor_identifier": self.LastJson['two_factor_info']['two_factor_identifier'],
+            "username": self.username,
+            "guid": self.uuid,
+            "device_id": self.device_id,
+            "_uuid": self.uuid
+        }
+        self.two_factor = self.SendRequest('accounts/two_factor_login/', self.generateSignature(json.dumps(data)), True)
+        self.login()
 
     def getTotalFollowers(self, usernameId):
         followers = []
