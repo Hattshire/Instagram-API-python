@@ -112,7 +112,19 @@ class InstagramAPI:
                     self.getRecentActivity()
                     print("Login success!\n")
                     return True
-
+    def loadSession(self, filepath):
+        with open(filepath) as session_file:
+            self.s.cookies = requests.cookies.cookiejar_from_dict(
+                json.load(session_file))
+            # TODO: Check if loaded session is valid.
+            self.isLoggedIn = True
+            self.username = self.s.cookies['ds_user']
+            self.username_id = self.s.cookies['ds_user_id']
+            self.rank_token = "%s_%s" % (self.username_id, self.uuid)
+            self.token = self.s.cookies["csrftoken"]
+        
+    def saveSession():
+        pass
     def syncFeatures(self):
         data = json.dumps({'_uuid': self.uuid,
                            '_uid': self.username_id,
