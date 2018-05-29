@@ -68,6 +68,7 @@ class InstagramAPI:
         self.setUser(username, password)
         self.isLoggedIn = False
         self.two_factor = False
+        self.facebook_login = False
         self.s = requests.Session()
         self.s.headers.update({ 'User-Agent': self.USER_AGENT})
         self.LastResponse = self.s.get("https://b.i.instagram.com/api/v1/zr/token/result/", params={ "device_id": self.device_id, "token_hash": '', "custom_device_id": self.device_id, "fetch_reason": "token_expired" })
