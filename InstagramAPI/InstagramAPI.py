@@ -69,6 +69,7 @@ class InstagramAPI:
         self.isLoggedIn = False
         self.two_factor = False
         self.s = requests.Session()
+        self.s.headers.update({ 'User-Agent': self.USER_AGENT})
         self.LastResponse = self.s.get("https://b.i.instagram.com/api/v1/zr/token/result/", params={ "device_id": self.device_id, "token_hash": '', "custom_device_id": self.device_id, "fetch_reason": "token_expired" })
 
     def setUser(self, username, password):
@@ -120,7 +121,7 @@ class InstagramAPI:
         params = {
             "access_token": "",
             "client_id": 124024574287414,
-            "e2e": "{\"init\":%s}" % datetime.datetime.utcnow().strftime('%s%f')[0:-3],
+            "e2e": "{\"init\":%s}" % datetime.utcnow().strftime('%s%f')[0:-3],
             "scope": "email",
             "default_audience": "friends",
             "redirect_uri": "fbconnect://success",
@@ -128,7 +129,6 @@ class InstagramAPI:
             "response_type": "token,signed_request",
             "return_scopes": "true"
         }
-        self.s.get()
         return requests.Request('GET', fbapi_url+'dialog/oauth', params=params).prepare().url
         
     def facebookLoginProcessParams(self, url):
@@ -143,7 +143,7 @@ class InstagramAPI:
             "waterfall_id": self.generateUUID(True),
             "fb_access_token": fbparams["access_token"]
         }
-        if self.SendRequest('fb/facebook_signup',self.generateSignature(json.dumps(data)), True):
+        if self.SendRequest('fb/facebook_signup/', self.generateSignature(json.dumps(data)), True):
             self.facebook_login = True
             self.login()
 
