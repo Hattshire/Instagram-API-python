@@ -105,13 +105,16 @@ class InstagramAPI:
                     self.rank_token = "%s_%s" % (self.username_id, self.uuid)
                     self.token = self.LastResponse.cookies["csrftoken"]
 
-                    self.syncFeatures()
-                    self.autoCompleteUserList()
-                    self.timelineFeed()
-                    self.getv2Inbox()
-                    self.getRecentActivity()
+                    self.sync()
                     print("Login success!\n")
                     return True
+
+    def sync(self):
+        self.syncFeatures()
+        self.autoCompleteUserList()
+        self.timelineFeed()
+        self.getv2Inbox()
+        self.getRecentActivity()
 
     def loadSession(self, filepath):
         with open(filepath) as session_file:
@@ -123,6 +126,8 @@ class InstagramAPI:
             self.username_id = self.s.cookies['ds_user_id']
             self.rank_token = "%s_%s" % (self.username_id, self.uuid)
             self.token = self.s.cookies["csrftoken"]
+
+            self.sync()
         
     def saveSession(self, filepath):
         with open(filepath, 'w') as session_file:
