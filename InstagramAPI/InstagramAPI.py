@@ -68,8 +68,10 @@ class InstagramAPI:
         self.setUser(username, password)
         self.isLoggedIn = False
         self.two_factor = False
-        self.LastResponse = None
+        self.facebook_login = False
         self.s = requests.Session()
+        self.s.headers.update({ 'User-Agent': self.USER_AGENT})
+        self.LastResponse = self.s.get("https://b.i.instagram.com/api/v1/zr/token/result/", params={ "device_id": self.device_id, "token_hash": '', "custom_device_id": self.device_id, "fetch_reason": "token_expired" })
 
     def setUser(self, username, password):
         self.username = username
@@ -90,7 +92,7 @@ class InstagramAPI:
 
     def login(self, force=False):
         if (not self.isLoggedIn or force):
-            if (self.two_factor or self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.generateUUID(False), None, True)):
+            if (self.two_factor or self.facebook_login or self.SendRequest('si/fetch_headers/?challenge_type=signup&guid=' + self.generateUUID(False), None, True)):
 
                 data = {'phone_id': self.generateUUID(True),
                         '_csrftoken': self.LastResponse.cookies['csrftoken'],
@@ -100,7 +102,7 @@ class InstagramAPI:
                         'password': self.password,
                         'login_attempt_count': '0'}
 
-                if (self.two_factor or self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
+                if (self.two_factor or self.facebook_login or self.SendRequest('accounts/login/', self.generateSignature(json.dumps(data)), True)):
                     self.isLoggedIn = True
                     self.username_id = self.LastJson["logged_in_user"]["pk"]
                     self.rank_token = "%s_%s" % (self.username_id, self.uuid)
@@ -113,6 +115,38 @@ class InstagramAPI:
                     self.getRecentActivity()
                     print("Login success!\n")
                     return True
+
+    def facebookLoginGetDialog(self):
+        fbapi_url = "https://m.facebook.com/v2.3/"
+
+        params = {
+            "access_token": "",
+            "client_id": 124024574287414,
+            "e2e": "{\"init\":%s}" % datetime.utcnow().strftime('%s%f')[0:-3],
+            "scope": "email",
+            "default_audience": "friends",
+            "redirect_uri": "fbconnect://success",
+            "display": "touch",
+            "response_type": "token,signed_request",
+            "return_scopes": "true"
+        }
+        return requests.Request('GET', fbapi_url+'dialog/oauth', params=params).prepare().url
+        
+    def facebookLoginProcessParams(self, url):
+        fbparams = dict(param.split("=") for param in urllib.parse.unquote(url.split("#")[1]).split("&"))
+        data = {
+            "dryrun": True,
+            "phone_id": self.generateUUID(True),
+            '_csrftoken': self.LastResponse.cookies['csrftoken'],
+            "adid": self.generateUUID(True),
+            "guid": self.uuid,
+            "device_id": self.device_id,
+            "waterfall_id": self.generateUUID(True),
+            "fb_access_token": fbparams["access_token"]
+        }
+        if self.SendRequest('fb/facebook_signup/', self.generateSignature(json.dumps(data)), True):
+            self.facebook_login = True
+            self.login()
 
     def syncFeatures(self):
         data = json.dumps({'_uuid': self.uuid,
