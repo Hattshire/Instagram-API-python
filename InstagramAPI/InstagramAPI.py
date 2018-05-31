@@ -108,13 +108,16 @@ class InstagramAPI:
                     self.rank_token = "%s_%s" % (self.username_id, self.uuid)
                     self.token = self.LastResponse.cookies["csrftoken"]
 
-                    self.syncFeatures()
-                    self.autoCompleteUserList()
-                    self.timelineFeed()
-                    self.getv2Inbox()
-                    self.getRecentActivity()
+                    self.sync()
                     print("Login success!\n")
                     return True
+
+    def sync(self):
+        self.syncFeatures()
+        self.autoCompleteUserList()
+        self.timelineFeed()
+        self.getv2Inbox()
+        self.getRecentActivity()
 
     def facebookLoginGetDialog(self):
         fbapi_url = "https://m.facebook.com/v2.3/"
@@ -147,6 +150,23 @@ class InstagramAPI:
         if self.SendRequest('fb/facebook_signup/', self.generateSignature(json.dumps(data)), True):
             self.facebook_login = True
             self.login()
+
+    def loadSession(self, filepath):
+        with open(filepath) as session_file:
+            self.s.cookies = requests.cookies.cookiejar_from_dict(
+                json.load(session_file))
+            # TODO: Check if loaded session is valid.
+            self.isLoggedIn = True
+            self.username = self.s.cookies['ds_user']
+            self.username_id = self.s.cookies['ds_user_id']
+            self.rank_token = "%s_%s" % (self.username_id, self.uuid)
+            self.token = self.s.cookies["csrftoken"]
+
+            self.sync()
+        
+    def saveSession(self, filepath):
+        with open(filepath, 'w') as session_file:
+            json.dump(requests.cookies.dict_from_cookiejar(self.s.cookies), session_file)
 
     def syncFeatures(self):
         data = json.dumps({'_uuid': self.uuid,
